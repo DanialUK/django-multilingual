@@ -1,0 +1,112 @@
+{% extends 'myapp/base.html' %}
+{% load static %}
+
+{% block title %}{{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+        <!-- Image gallery -->
+        <div class="flex flex-col">
+            <div class="aspect-w-1 aspect-h-1 rounded-lg bg-gray-100 overflow-hidden">
+                {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-full object-center object-cover">
+                {% else %}
+                <img src="{% static 'myapp/images/default-product.png' %}" alt="{{ item.name }}" class="w-full h-full object-center object-cover">
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Product info -->
+        <div class="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
+            <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">{{ item.name }}</h1>
+            
+            <div class="mt-3">
+                <h2 class="sr-only">Product information</h2>
+                <p class="text-3xl text-gray-900">${{ item.price }}</p>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="sr-only">Description</h3>
+                <div class="text-base text-gray-700 space-y-6">
+                    <p>{{ item.description }}</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <div class="flex items-center">
+                    <img class="h-8 w-8 rounded-full" src="{% static 'myapp/images/default-avatar.png' %}" alt="">
+                    <p class="ml-2 text-sm text-gray-500">
+                        Sold by <span class="font-medium text-gray-900">{{ item.seller.username }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                {% if user.is_authenticated %}
+                    {% if user == item.seller %}
+                    <div class="flex space-x-4">
+                        <a href="{% url 'myapp:update_item' item.id %}" 
+                           class="flex-1 bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700">
+                            Edit Product
+                        </a>
+                        <a href="{% url 'myapp:delete_item' item.id %}"
+                           class="flex-1 bg-red-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-red-700">
+                            Delete Product
+                        </a>
+                    </div>
+                    {% else %}
+                    <button type="button" id="checkout-button"
+                            class="w-full bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700">
+                        Buy Now
+                    </button>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'users:login' %}" 
+                       class="w-full bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700">
+                        Login to Purchase
+                    </a>
+                {% endif %}
+            </div>
+
+            <div class="mt-6">
+                <div class="border-t border-gray-200 pt-6">
+                    <h3 class="text-sm font-medium text-gray-900">Shipping Information</h3>
+                    <div class="mt-4 prose prose-sm text-gray-500">
+                        <ul role="list">
+                            <li>Free shipping worldwide</li>
+                            <li>Secure payment processing</li>
+                            <li>30-day return policy</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.is_authenticated and user != item.seller %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+    const checkoutButton = document.getElementById('checkout-button');
+    checkoutButton.addEventListener('click', function() {
+        fetch('/myapp/buy/{{ item.id }}')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(session) {
+            return stripe.redirectToCheckout({ sessionId: session.sessionId });
+        })
+        .then(function(result) {
+            if (result.error) {
+                alert(result.error.message);
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
