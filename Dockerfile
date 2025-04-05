@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.10-alpine
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -8,24 +8,32 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
+RUN apk add --no-cache \
+    build-base \
+    libpq \
     python3-dev \
-    libjpeg62-turbo-dev \
-    zlib1g-dev \
+    libjpeg-turbo-dev \
+    zlib-dev \
     gettext \
-    && rm -rf /var/lib/apt/lists/*
+    redis \
+    curl
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY requirements.txt requirements-celery.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-celery.txt
 
 # Create media and static directories
 RUN mkdir -p /app/media /app/static
 
 # Copy project
 COPY . .
+
+# Create necessary directories for Celery
+RUN mkdir -p /var/log/celery /var/run/celery
+
+# Set permissions
+RUN chown -R nobody:nobody /var/log/celery /var/run/celery
 
 # Compile message files
 RUN python manage.py compilemessages
